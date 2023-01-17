@@ -45,7 +45,7 @@ private:
 	bool checkInstanceExtensionSupport(const std::vector<const char*>& extensions);
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device) const;
 	bool checkDeviceSuitable(VkPhysicalDevice device);
-	bool checkValidationLayersSupport();
+	bool checkValidationLayersSupport() const;
 	void getPhysicalDevice();
 	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);
 	void setupDebugMessenger();
@@ -53,6 +53,7 @@ private:
 		VkDebugUtilsMessengerEXT* pDebugMessenger);
 	void destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+	SwapChainDetails getSwapChainDetails(VkPhysicalDevice device);
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,

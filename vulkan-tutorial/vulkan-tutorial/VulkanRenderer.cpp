@@ -81,6 +81,28 @@ void VulkanRenderer::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreat
 	createInfo.pfnUserCallback = debugCallback;
 }
 
+SwapChainDetails VulkanRenderer::getSwapChainDetails(VkPhysicalDevice device)
+{
+	SwapChainDetails swapChainDetails;
+
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &swapChainDetails.surfaceCapabilities);
+	uint32_t formatCount = 0;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+	if (formatCount > 0)
+	{
+		swapChainDetails.formats.resize(formatCount);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, swapChainDetails.formats.data());
+	}
+	uint32_t modeCount = 0;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &modeCount, nullptr);
+	if (modeCount > 0)
+	{
+		swapChainDetails.presentationModes.resize(modeCount);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &modeCount, swapChainDetails.presentationModes.data());
+	}
+	return swapChainDetails;
+}
+
 
 VulkanRenderer::~VulkanRenderer()
 {
@@ -209,10 +231,9 @@ void VulkanRenderer::createLogicalDevice()
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-	deviceCreateInfo.enabledExtensionCount = 0;				// number of enabled logical device extensions
-	deviceCreateInfo.ppEnabledExtensionNames = nullptr;
+	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());				// number of enabled logical device extensions
+	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 	deviceCreateInfo.enabledLayerCount = 0;
-	deviceCreateInfo.ppEnabledExtensionNames = nullptr;
 
 	// Physical device features the logical device will use.
 	VkPhysicalDeviceFeatures deviceFeatures = {};
@@ -356,11 +377,18 @@ bool VulkanRenderer::checkDeviceSuitable(VkPhysicalDevice device)
 
 	auto indices = getQueueFamilies(device);
 	const bool extensionsSupported = checkDeviceExtensionSupport(device);
-	return indices.isValid() && extensionsSupported;
+
+	bool swapChainValid = false;
+	if (extensionsSupported)
+	{
+		const SwapChainDetails swapChainDetails = getSwapChainDetails(device);
+		swapChainValid = !swapChainDetails.presentationModes.empty() && !swapChainDetails.formats.empty();
+	}
+	return indices.isValid() && extensionsSupported && swapChainValid;
 
 }
 
-bool VulkanRenderer::checkValidationLayersSupport()
+bool VulkanRenderer::checkValidationLayersSupport() const
 {
 	uint32_t layerCount = 0;
 	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
