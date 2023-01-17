@@ -1,10 +1,11 @@
 #pragma once
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 #include <stdexcept>
 #include <vector>
-
+#include <set>
 #include "Utilities.h"
 
 class VulkanRenderer
@@ -26,7 +27,8 @@ private:
 	} mainDevice;
 
 	VkQueue graphicsQueue;
-
+	VkQueue presentationQueue;
+	VkSurfaceKHR surface;
 
 	const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
 	VkDebugUtilsMessengerEXT debugMessenger;
@@ -38,7 +40,10 @@ private:
 
 	void createInstance();
 	void createLogicalDevice();
+	void createSurface();
+
 	bool checkInstanceExtensionSupport(const std::vector<const char*>& extensions);
+	bool checkDeviceExtensionSupport(VkPhysicalDevice device) const;
 	bool checkDeviceSuitable(VkPhysicalDevice device);
 	bool checkValidationLayersSupport();
 	void getPhysicalDevice();
