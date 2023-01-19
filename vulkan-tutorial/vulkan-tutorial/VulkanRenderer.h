@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <vector>
 #include <set>
+#include <algorithm>
 #include "Utilities.h"
 
 class VulkanRenderer
@@ -41,6 +42,7 @@ private:
 	void createInstance();
 	void createLogicalDevice();
 	void createSurface();
+	void createSwapChain();
 
 	bool checkInstanceExtensionSupport(const std::vector<const char*>& extensions);
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device) const;
@@ -54,6 +56,10 @@ private:
 	void destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 	SwapChainDetails getSwapChainDetails(VkPhysicalDevice device);
+
+	VkSurfaceFormatKHR chooseBestSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats);
+	VkPresentModeKHR chooseBestPresentationMode(const std::vector <VkPresentModeKHR>& presentationModes);
+	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& surfaceCapabilities);
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
