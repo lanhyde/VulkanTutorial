@@ -14,6 +14,7 @@ int VulkanRenderer::init(GLFWwindow* window)
 		createSurface();
 		getPhysicalDevice();
 		createLogicalDevice();
+		createSwapChain();
 
 		setupDebugMessenger();
 	} catch(const std::runtime_error& err)
@@ -28,6 +29,11 @@ int VulkanRenderer::init(GLFWwindow* window)
 
 void VulkanRenderer::cleanup()
 {
+	for(const auto& image: swapChainImages)
+	{
+		vkDestroyImageView(mainDevice.logicalDevice, image.imageView, nullptr);
+	}
+	vkDestroySwapchainKHR(mainDevice.logicalDevice, swapChain, nullptr);
 	if (enableValidationLayers)
 	{
 		destroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
@@ -334,6 +340,7 @@ void VulkanRenderer::createSwapChain()
 
 	VkSwapchainCreateInfoKHR swapChainCreateInfo = {};
 	swapChainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapChainCreateInfo.surface = surface;
 	swapChainCreateInfo.imageFormat = surfaceFormat.format;
 	swapChainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
 	swapChainCreateInfo.presentMode = presentationMode;
@@ -345,7 +352,83 @@ void VulkanRenderer::createSwapChain()
 	swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	swapChainCreateInfo.clipped = VK_TRUE;
 
+	// Get Queue Family Indices
+	QueueFamilyIndices indices = getQueueFamilies(mainDevice.physicalDevice);
 
+	// If graphics and presentation families are different, then swapchain must let images be shared between families
+	if (indices.graphicsFamily != indices.presentationFamily)
+	{
+		uint32_t queueFamilyIndices[] = {
+			(uint32_t)indices.graphicsFamily,
+			(uint32_t)indices.presentationFamily
+		};
+		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;		// Image share handling
+		swapChainCreateInfo.queueFamilyIndexCount = 2;							// Number of queues to share images between
+		swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;			// Array of queues to share between
+	}
+	else
+	{
+		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		swapChainCreateInfo.queueFamilyIndexCount = 0;
+		swapChainCreateInfo.pQueueFamilyIndices = nullptr;
+	}
+	// If old swap chain is destroyed and this one replaces it, then link old one to quickly hand over responsibilities
+	swapChainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
+	// Create Swapchain
+	auto result = vkCreateSwapchainKHR(mainDevice.logicalDevice, &swapChainCreateInfo, nullptr, &swapChain);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create a swapChain!");
+	}
+	// Store for later reference
+	swapChainImageFormat = surfaceFormat.format;
+	swapChainExtent = extent;
+
+	// Get swap chain images (first count, then values)
+	uint32_t swapChainImageCount;
+	vkGetSwapchainImagesKHR(mainDevice.logicalDevice, swapChain, &swapChainImageCount, nullptr);
+	std::vector<VkImage> images(swapChainImageCount);
+	vkGetSwapchainImagesKHR(mainDevice.logicalDevice, swapChain, &swapChainImageCount, images.data());
+
+	for (VkImage image: images)
+	{
+		// Store image handle
+		SwapchainImage swapChainImage{};
+		swapChainImage.image = image;
+		// Create image view
+		swapChainImage.imageView = createImageView(image, swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);\
+		// save to image list
+		swapChainImages.push_back(swapChainImage);
+	}
+}
+
+VkImageView VulkanRenderer::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
+{
+	VkImageViewCreateInfo viewCreateInfo{};
+	viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewCreateInfo.image = image;											// Image to create view for
+	viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;						// Type of image
+	viewCreateInfo.format = format;											// Format of image data
+	viewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;			// Allows remapping of rgba components to other rgba values	
+	viewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+	// subresources allow the view to view only part of an image
+	viewCreateInfo.subresourceRange.aspectMask = aspectFlags;				// which aspect of image to view (e.g. COLOR_BIT for viewing color)
+	viewCreateInfo.subresourceRange.baseMipLevel = 0;						// start mipmap level to view from
+	viewCreateInfo.subresourceRange.levelCount = 1;							// number of mipmap level to view
+	viewCreateInfo.subresourceRange.baseArrayLayer = 0;						// start array level to view from
+	viewCreateInfo.subresourceRange.layerCount = 1;							// number of array levels to view
+
+	// create image view and return
+	VkImageView imageView;
+	auto result = vkCreateImageView(mainDevice.logicalDevice, &viewCreateInfo, nullptr, &imageView);
+	if (result != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create image view");
+	}
+	return imageView;
 }
 
 

@@ -30,6 +30,11 @@ private:
 	VkQueue graphicsQueue;
 	VkQueue presentationQueue;
 	VkSurfaceKHR surface;
+	VkSwapchainKHR swapChain;
+	std::vector<SwapchainImage> swapChainImages;
+	// -Utility
+	VkFormat swapChainImageFormat;
+	VkExtent2D swapChainExtent;
 
 	const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
 	VkDebugUtilsMessengerEXT debugMessenger;
@@ -43,6 +48,7 @@ private:
 	void createLogicalDevice();
 	void createSurface();
 	void createSwapChain();
+	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 
 	bool checkInstanceExtensionSupport(const std::vector<const char*>& extensions);
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device) const;
